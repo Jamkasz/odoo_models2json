@@ -77,6 +77,24 @@ class OdooClass(object):
         self.fields = []
         self.relations = []
 
+    def get_name(self):
+        """ Get the name of the class
+        :return: Class name
+        """
+        return self.name
+
+    def get_fields(self):
+        """ Get the fields of the class
+        :return: Class fields
+        """
+        return self.fields
+
+    def get_relations(self):
+        """ Get the relations of the class
+        :return: Class relations
+        """
+        return self.relations
+
     def add_field(self, field):
         """ Add a field to the model
         :param field: The field object to add
