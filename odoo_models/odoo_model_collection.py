@@ -95,25 +95,19 @@ class OdooClass(object):
         """
         return self.relations
 
-    def add_field(self, field):
+    def add_field(self, field_name, field_type):
         """ Add a field to the model
         :param field: The field object to add
         :return:
         """
-        if not isinstance(field, OdooField):
-            raise TypeError('OdooField expected, received {0}'.format(
-                type(field)))
-        self.fields.append(field)
+        self.fields.append(OdooField(field_name, field_type))
 
-    def add_relation(self, relation):
+    def add_relation(self, rel_name, rel_type, rel_model):
         """ Add a relation to the model
         :param relation: The relation object to add
         :return:
         """
-        if not isinstance(relation, OdooRelation):
-            raise TypeError('OdooRelation expected, received {0}'.format(
-                type(relation)))
-        self.relations.append(relation)
+        self.relations.append(OdooRelation(rel_name, rel_type, rel_model))
 
 
 class CustomEncoder(JSONEncoder):
@@ -167,14 +161,12 @@ class OdooModelCollection(object):
                 if field_type == 'many2one' or field_type == 'many2many' or \
                         field_type == 'one2many':
                     relation_model = fields[key]['relation']
-                    oclass.add_relation(OdooRelation(key,
-                                                     field_type,
-                                                     relation_model))
+                    oclass.add_relation(key, field_type, relation_model)
                     if relation_model not in self.relation_models and \
                             relation_model not in models.keys():
                         self.relation_models.append(relation_model)
                 else:
-                    oclass.add_field(OdooField(key, field_type))
+                    oclass.add_field(key, field_type)
             self.classes.append(oclass)
 
         for model in self.relation_models:
