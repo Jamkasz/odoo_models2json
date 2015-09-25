@@ -1,3 +1,5 @@
+__author__ = 'joelortiz'
+
 import unittest
 from odoo_models.odoo_model_collection import OdooField
 
