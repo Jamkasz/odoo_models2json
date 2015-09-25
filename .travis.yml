@@ -7,5 +7,3 @@ install:
 # command to run tests
 script:
   - nosetests
-# command to run pylint
-  - pylint odoo_models
