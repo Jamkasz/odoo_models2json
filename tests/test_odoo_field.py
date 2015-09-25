@@ -1,6 +1,6 @@
 import unittest
-from odoo_models import odoo_model_collection
-from odoo_model_collection import OdooField
+# from odoo_models import odoo_model_collection
+from odoo_models import OdooField
 
 
 class TestOdooField(unittest.TestCase):
