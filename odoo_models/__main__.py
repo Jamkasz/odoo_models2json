@@ -1,8 +1,11 @@
 """ Command line tool to get an Odoo model collection and output in JSON format
 """
 from odoo_models.odoo_model_collection import OdooModelCollection
+from odoo_models.html_formatter import HTMLFormatter
 import argparse
 import sys
+import os
+import errno
 
 
 PARSER = argparse.ArgumentParser(description='Quick JSON file generator '
@@ -21,6 +24,8 @@ PARSER.add_argument('-p', help='Password to use for username when connecting '
                                'to database (default: admin)', default='admin')
 PARSER.add_argument('-f', help='Filter to only get classes that contain '
                                'this string.')
+PARSER.add_argument('-h', help='Output a HTML & d3.js version of model '
+                               'collection')
 
 
 def main():
@@ -33,7 +38,22 @@ def main():
                                      server=args.s,
                                      user=args.u,
                                      password=args.p)
-    print collection.convert_collection_to_json()
+    if not args.h:
+        print collection.convert_collection_to_json()
+    else:
+        html = HTMLFormatter(collection=collection)
+        if not os.path.exists(args.h):
+            try:
+                os.makedirs(args.h)
+            except OSError as exc:
+                if exc.errno == errno.EEXIST and os.path.isdir(args.h):
+                    pass
+                else:
+                    raise
+        fname = '{0}.html'.format(args.f if args.f else 'index')
+        with open('{0}/{1}'.format(args.h, fname), 'wb') as wfile:
+            wfile.write(html.html)
+
 
 if __name__ == '__main__':
     sys.exit(main())
