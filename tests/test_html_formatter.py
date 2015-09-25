@@ -6,7 +6,7 @@
 """
 import unittest
 from mock import Mock, MagicMock
-from odoo_models.odoo_model_collection import OdooModelCollection, OdooClass, OdooField
+from odoo_models.odoo_model_collection import OdooModelCollection, OdooClass
 from odoo_models.html_formatter import HTMLFormatter
 from jinja2 import Environment, Template
 

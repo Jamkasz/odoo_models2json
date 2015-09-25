@@ -24,7 +24,7 @@ PARSER.add_argument('-p', help='Password to use for username when connecting '
                                'to database (default: admin)', default='admin')
 PARSER.add_argument('-f', help='Filter to only get classes that contain '
                                'this string.')
-PARSER.add_argument('-h', help='Output a HTML & d3.js version of model '
+PARSER.add_argument('-o', help='Output a HTML & d3.js version of model '
                                'collection')
 
 
@@ -38,20 +38,20 @@ def main():
                                      server=args.s,
                                      user=args.u,
                                      password=args.p)
-    if not args.h:
+    if not args.o:
         print collection.convert_collection_to_json()
     else:
         html = HTMLFormatter(collection=collection)
-        if not os.path.exists(args.h):
+        if not os.path.exists(args.o):
             try:
-                os.makedirs(args.h)
+                os.makedirs(args.o)
             except OSError as exc:
-                if exc.errno == errno.EEXIST and os.path.isdir(args.h):
+                if exc.errno == errno.EEXIST and os.path.isdir(args.o):
                     pass
                 else:
                     raise
         fname = '{0}.html'.format(args.f if args.f else 'index')
-        with open('{0}/{1}'.format(args.h, fname), 'wb') as wfile:
+        with open('{0}/{1}'.format(args.o, fname), 'wb') as wfile:
             wfile.write(html.html)
 
 
