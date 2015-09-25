@@ -16,16 +16,13 @@ class TestHtmlOutput(unittest.TestCase):
 
     def setUp(self):
         # Set up demo objects
-        field1 = OdooField('name', 'char')
-        field2 = OdooField('dob', 'datetime')
-        field3 = OdooField('location', 'char')
         class1 = OdooClass('test.class.one')
-        class1.add_field(field1)
-        class1.add_field(field2)
-        class1.add_field(field3)
+        class1.add_field('name', 'char')
+        class1.add_field('dob', 'datetime')
+        class1.add_field('location', 'char')
         class2 = OdooClass('test.class.two')
-        class2.add_field(field1)
-        class2.add_field(field2)
+        class2.add_field('name', 'char')
+        class2.add_field('dob', 'datetime')
         self.mock_json = '[{"fields": [{"name": "name", "type": "char"}' \
                          '{"name": "dob", "type": "datetime"}' \
                          '{"name": "location", "type": "char"}], ' \
