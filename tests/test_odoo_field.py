@@ -1,6 +1,5 @@
 import unittest
-# from odoo_models import odoo_model_collection
-from odoo_models import OdooField
+from odoo_models.odoo_model_collection import OdooField
 
 
 class TestOdooField(unittest.TestCase):
@@ -21,7 +20,8 @@ class TestOdooField(unittest.TestCase):
         """
         names = [True, 1, 1.5, ['name'], {'name': 'name'}, {'name'}]
         for name in names:
-            self.assertRaises(TypeError, OdooField(name, 'type'))
+            with self.assertRaises(TypeError):
+                OdooField(name, 'type')
 
     def test_03_init_throws_unexpected_type_exception_with_non_string_type(self):
         """
@@ -30,7 +30,8 @@ class TestOdooField(unittest.TestCase):
         """
         types = [True, 1, 1.5, ['type'], {'type': 'type'}, {'type'}]
         for t in types:
-            self.assertRaises(TypeError, OdooField('name', t))
+            with self.assertRaises(TypeError):
+                OdooField('name', t)
 
     def test_04_get_name(self):
         """
