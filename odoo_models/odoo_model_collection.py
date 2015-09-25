@@ -140,11 +140,6 @@ class OdooModelCollection(object):
         self.classes = []
         self.relation_models = []
         self.model_filter = model_filter
-
-    def convert_collection_to_json(self):
-        """ Method for converting a collection of Odoo models to a JSON format
-        :return: JSON representation of Odoo collection
-        """
         print 'Obtaining model list...'
         models = self.client.models()
         models = {models[key]._name: models[key] for key in models.keys()}
@@ -173,6 +168,10 @@ class OdooModelCollection(object):
             oclass = OdooClass(model)
             self.classes.append(oclass)
 
+    def convert_collection_to_json(self):
+        """ Method for converting a collection of Odoo models to a JSON format
+        :return: JSON representation of Odoo collection
+        """
         return json.dumps(self.classes, cls=CustomEncoder)
 
     def get_classes(self):
