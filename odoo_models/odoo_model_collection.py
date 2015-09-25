@@ -1,10 +1,14 @@
+#pylint: disable=protected-access,method-hidden
+""" Classes for dealing with Odoo modules
+"""
 import erppeek
 import json
 from json import JSONEncoder
 
 
-class OdooField:
-
+class OdooField(object):
+    """ A class for dealing with fields defined in an Odoo model
+    """
     def __init__(self, field_name, field_type):
         if not isinstance(field_name, str):
             raise TypeError('String expected, received {0}'.format(
@@ -15,9 +19,21 @@ class OdooField:
         self.name = field_name
         self.type = field_type
 
+    def get_name(self):
+        """ Get the name of the field
+        :return: Field name
+        """
+        return self.name
 
-class OdooRelation:
+    def get_type(self):
+        """ Get the type of the field
+        :return: Field type
+        """
+        return self.type
 
+class OdooRelation(object):
+    """ A class for dealing with relations between Odoo models
+    """
     def __init__(self, name, multiplicity, model):
         if not isinstance(name, str):
             raise TypeError('String expected, received {0}'.format(
@@ -32,9 +48,27 @@ class OdooRelation:
         self.type = multiplicity
         self.model = model
 
+    def get_name(self):
+        """ Get the name of the relation
+        :return: Relation name
+        """
+        return self.name
 
-class OdooClass:
+    def get_type(self):
+        """ Get the multiplicity of the relation
+        :return: Multiplicity of relation
+        """
+        return self.type
 
+    def get_model(self):
+        """ Get the model of the relation
+        :return: Relation model
+        """
+        return self.model
+
+class OdooClass(object):
+    """ A class for dealing with odoo models
+    """
     def __init__(self, name):
         if not isinstance(name, str):
             raise TypeError('String expected, received {0}'.format(
@@ -44,12 +78,20 @@ class OdooClass:
         self.relations = []
 
     def add_field(self, field):
+        """ Add a field to the model
+        :param field: The field object to add
+        :return:
+        """
         if not isinstance(field, OdooField):
             raise TypeError('OdooField expected, received {0}'.format(
                 type(field)))
         self.fields.append(field)
 
     def add_relation(self, relation):
+        """ Add a relation to the model
+        :param relation: The relation object to add
+        :return:
+        """
         if not isinstance(relation, OdooRelation):
             raise TypeError('OdooRelation expected, received {0}'.format(
                 type(relation)))
@@ -57,12 +99,17 @@ class OdooClass:
 
 
 class CustomEncoder(JSONEncoder):
+    """ Custom JSONEncoder for dealing with Odoo model data so JSON uses the
+    underlying dictionary for the Odoo class
+    """
     def default(self, o):
         return o.__dict__
 
 
-class OdooModelCollection:
-
+class OdooModelCollection(object):
+    """ A class for connecting to an Odoo instance with ERPPeek and getting the
+    models from instance. Offers a method to convert the collection to JSON
+    """
     def __init__(self, model_filter=None, server='http://localhost:8069',
                  db='default_db',
                  user='admin',
@@ -83,6 +130,9 @@ class OdooModelCollection:
         self.model_filter = model_filter
 
     def convert_collection_to_json(self):
+        """ Method for converting a collection of Odoo models to a JSON format
+        :return: JSON representation of Odoo collection
+        """
         print 'Obtaining model list...'
         models = self.client.models()
         models = {models[key]._name: models[key] for key in models.keys()}
@@ -94,19 +144,19 @@ class OdooModelCollection:
         for model in models.keys():
             oclass = OdooClass(model)
             fields = models[model].fields()
-            for f in fields.keys():
-                field_type = fields[f]['type']
+            for key in fields.keys():
+                field_type = fields[key]['type']
                 if field_type == 'many2one' or field_type == 'many2many' or \
                         field_type == 'one2many':
-                    relation_model = fields[f]['relation']
-                    oclass.add_relation(OdooRelation(f,
+                    relation_model = fields[key]['relation']
+                    oclass.add_relation(OdooRelation(key,
                                                      field_type,
                                                      relation_model))
                     if relation_model not in self.relation_models and \
                             relation_model not in models.keys():
                         self.relation_models.append(relation_model)
                 else:
-                    oclass.add_field(OdooField(f, field_type))
+                    oclass.add_field(OdooField(key, field_type))
             self.classes.append(oclass)
 
         for model in self.relation_models:
@@ -114,3 +164,15 @@ class OdooModelCollection:
             self.classes.append(oclass)
 
         return json.dumps(self.classes, cls=CustomEncoder)
+
+    def get_classes(self):
+        """ Get a list of classes in Odoo Model Collection
+        :return: list of Odoo Model Classes
+        """
+        return self.classes
+
+    def get_relation_models(self):
+        """ Get a list of relation models in Odoo Model Collection
+        :return: list of Odoo Model Relations
+        """
+        return self.relation_models

@@ -1,26 +1,33 @@
-from odoo_model_collection import OdooModelCollection
+""" Command line tool to get an Odoo model collection and output in JSON format
+"""
+from odoo_models.odoo_model_collection import OdooModelCollection
 import argparse
 import sys
 
-parser = argparse.ArgumentParser(description='Quick JSON file generator '
+
+PARSER = argparse.ArgumentParser(description='Quick JSON file generator '
                                              'containing model schema of the '
                                              'provided Odoo DB - eg -d <dbname>'
                                              ' -u <username>')
-parser.add_argument('-s', help='URL of the Odoo server '
+PARSER.add_argument('-s', help='URL of the Odoo server '
                                '(default: http://localhost:8069)',
                     default='http://localhost:8069')
-parser.add_argument('-d', help='Name of the database to connect to '
+PARSER.add_argument('-d', help='Name of the database to connect to '
                                '(default: openerp)',
                     default='openerp')
-parser.add_argument('-u', help='Username to use when connecting to the '
+PARSER.add_argument('-u', help='Username to use when connecting to the '
                                'database (default: admin)', default='admin')
-parser.add_argument('-p', help='Password to use for username when connecting '
+PARSER.add_argument('-p', help='Password to use for username when connecting '
                                'to database (default: admin)', default='admin')
-parser.add_argument('-f', help='Filter to only get classes that contain '
+PARSER.add_argument('-f', help='Filter to only get classes that contain '
                                'this string.')
 
+
 def main():
-    args = parser.parse_args()
+    """ Method to take command line args, get model collection and return JSON
+    :return: prints JSON
+    """
+    args = PARSER.parse_args()
     collection = OdooModelCollection(model_filter=args.f,
                                      db=args.d,
                                      server=args.s,
