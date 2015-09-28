@@ -2,34 +2,50 @@
 <meta charset="utf-8">
 <style>
     .node {
-        stroke: #fff;
+        stroke: rgba(0,0,0,0);
         stroke-width: 1.5px;
     }
     .link {
         fill: none;
         stroke: #bbb;
     }
+    .hidden{
+        stroke: none;
+    }
+    .visible{
+        stroke: #bbb;
+    }
 </style>
 <body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 <script>
     var graph = {{ collection_json }};
     var width = 960, height = 500;
-    var color = d3.scale.category20();
     var force = d3.layout.force()
-            .linkDistance(10)
-            .linkStrength(2)
+            .linkDistance(120)
+            .linkStrength(1)
             .size([width, height]);
     var svg = d3.select("body").append("svg")
             .attr("width", width)
-            .attr("height", height);
+            .attr("height", height)
+            .append('g')
+            .call(d3.behavior.zoom().scaleExtent([1,8]).on("zoom", zoom))
+            .append('g')
 
-    var nodes = graph.nodes.slice(), links = [], bilinks = [];
+    var nodes = graph.slice(), links = [], bilinks = [];
+    var mapped_nodes = nodes.map(function(a){return a.name;})
 
-    graph.links.forEach(function(link) {
-        var s = nodes[link.source], t = nodes[link.target], i = {}; // intermediate node
+    graph.forEach(function(node) {
+        var i = {};
         nodes.push(i);
-        links.push({source: s, target: i}, {source: i, target: t});
-        bilinks.push([s, i, t]);
+        node.relations.forEach(function(relation){
+            var s = node;
+            var t = nodes[mapped_nodes.indexOf(relation.model)];
+            if(s.name && t.name){
+                links.push({source: s, target: i}, {source: i, target: t});
+                bilinks.push([s, i, t]);
+            }
+        });
     });
 
     force.nodes(nodes)
@@ -41,25 +57,49 @@
             .enter().append("path")
             .attr("class", "link");
 
+    link.append("title").text(function(d){
+        return d[0].name + ' -> ' + d[2].name;
+    });
+
     var node = svg.selectAll(".node")
-            .data(graph.nodes)
-            .enter().append("circle")
+            .data(nodes)
+            .enter()
+            .append("circle")
+            .filter(function(d){ return typeof(d.name) !== 'undefined'; })
             .attr("class", "node")
             .attr("r", 5)
-            .call(force.drag);
+            .call(force.drag)
+            .on('drag.force', function(){});
 
-//    node.append("title")
-//            .text(function(d) { return d.name; });
-//
-//    force.on("tick", function() {
-//        link.attr("d", function(d) {
-//            return "M" + d[0].x + "," + d[0].y
-//                    + "S" + d[1].x + "," + d[1].y
-//                    + " " + d[2].x + "," + d[2].y;
-//        });
-//        node.attr("transform", function(d) {
-//            return "translate(" + d.x + "," + d.y + ")";
-//        });
-//    });
+    node.append("title")
+            .text(function(d) { return d.name; });
+
+    node.on('click', function(d){
+        var name = d.name;
+        link.attr('class', function(o){
+            if(o[0] === d || o[2] === d){
+                return 'link visible';
+            }
+            return 'link hidden';
+        });
+    });
+
+    force.on("tick", function() {
+        link.attr("d", function(d) {
+            return "M" + d[0].x + "," + d[0].y
+                    + "S" + d[1].x + "," + d[1].y
+                    + " " + d[2].x + "," + d[2].y;
+        });
+        node.attr("transform", function(d) {
+            return "translate(" + d.x + "," + d.y + ")";
+        });
+    });
+
+
+
+    function zoom() {
+        svg.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+    }
+
 </script>
 </body>
