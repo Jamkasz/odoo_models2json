@@ -1,7 +1,7 @@
 """ Command line tool to get an Odoo model collection and output in JSON format
 """
-from odoo_models.odoo_model_collection import OdooModelCollection
-from odoo_models.html_formatter import HTMLFormatter
+from odoo_model_collection import OdooModelCollection
+from html_formatter import HTMLFormatter
 import argparse
 import sys
 import os

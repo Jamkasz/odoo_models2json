@@ -1,8 +1,9 @@
 # pylint: disable=maybe-no-member,too-few-public-methods
 """ Formatter to provide HTML output for an Odoo Model Collection
 """
-from odoo_models.odoo_model_collection import OdooModelCollection
-from jinja2 import Environment, PackageLoader
+from odoo_model_collection import OdooModelCollection
+from jinja2 import Environment, FileSystemLoader
+import os
 
 class HTMLFormatter(object):
     """ A class for handling the HTML output functionality
@@ -24,6 +25,6 @@ class HTMLFormatter(object):
         :return: A string of HTML
         """
         collection_json = self.collection.convert_collection_to_json()
-        env = Environment(loader=PackageLoader('odoo_models', 'templates'))
+        env = Environment(loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')))
         template = env.get_template('curved_links.html')
         return template.render(collection_json=collection_json)
