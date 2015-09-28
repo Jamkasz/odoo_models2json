@@ -1,31 +1,119 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
-<style>
-    .node {
-        stroke: rgba(0,0,0,0);
-        stroke-width: 1.5px;
-    }
-    .link {
-        fill: none;
-        stroke: #bbb;
-    }
-    .hidden{
-        stroke: none;
-    }
-    .visible{
-        stroke: #bbb;
-    }
-</style>
+<head>
+    <meta charset="utf-8">
+    <title>Odoo Model Collection Viewer - Curved Links</title>
+    <style>
+        body{
+            padding-top: 50px;
+        }
+        .node {
+            stroke: rgba(0,0,0,0);
+            stroke-width: 1.5px;
+        }
+        .link {
+            fill: none;
+            stroke: #bbb;
+        }
+        .hidden{
+            stroke: none;
+        }
+        .outgoing{
+            stroke: red;
+        }
+        .incoming{
+            stroke: blue;
+        }
+    </style>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
+</head>
 <body>
+<nav class="navbar navbar-inverse navbar-fixed-top">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="#">Odoo Model Collection Viewer</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <form class="navbar-form navbar-right">
+        <input type="text" class="form-control" placeholder="Search...">
+      </form>
+    </div>
+  </div>
+</nav>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-9 col-md-10 main">
+            <h1 class="page-header">Odoo Model</h1>
+            <div id="viz"></div>
+            <div class="well info">
+                <h2>Instructions</h2>
+                <p>Click on a point in the network graph to see the model details and it's relation with other models. <strong>Blue</strong> indicates a link from another model to the active model, <strong>Red</strong> indicates a link from the active model to another model</p>
+                <p>You can scroll in and out to zoom into the dataset.</p>
+            </div>
+        </div>
+        <div class="col-sm-3 col-md-2 sidebar">
+            <h2>Model Details</h2>
+            <h3>Name</h3>
+            <p id="model_name"></p>
+            <h3>Fields <span id="fields_count" class="label label-default badge"></span></h3>
+            <div id="model_fields"></div>
+            <h3>Relations <span id="rel_count" class="label label-default badge"></span></h3>
+            <div id="model_relations"></div>
+        </div>
+    </div>
+</div>
+<!-- jQuery JS -->
+<script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+<!-- d3 JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 <script>
+    // information display
+    var model_name = $('#model_name');
+    var model_fields = $('#model_fields');
+    var model_relations = $('#model_relations');
+    $('.sidebar h3').on('click', function(e){
+       $(this).next('div').toggle();
+    });
+
+    function fieldsToHTML(obj){
+        var htmlstr = ''
+        for(var i=0; i < obj.fields.length; i++){
+            var field = obj.fields[i];
+            htmlstr += '<p><strong>Name:</strong> ' + field.name + '<br>' +
+                    '<strong>Type:</strong> ' + field.type + '</p>';
+        }
+        return htmlstr;
+    }
+
+    function relationsToHTML(obj){
+        var htmlstr = ''
+        for(var i=0; i < obj.relations.length; i++){
+            var rel = obj.relations[i];
+            htmlstr +=  '<p><strong>Name:</strong> ' + rel.name + '<br>' +
+                    '<strong>Type:</strong> ' + rel.type + '<br>' +
+                    '<strong>Model:</strong> ' + rel.model + '</p>';
+        }
+        return htmlstr;
+    }
+
+    // svg
     var graph = {{ collection_json }};
     var width = 960, height = 500;
     var force = d3.layout.force()
             .linkDistance(120)
             .linkStrength(1)
             .size([width, height]);
-    var svg = d3.select("body").append("svg")
+    var svg = d3.select("#viz").append("svg")
             .attr("width", width)
             .attr("height", height)
             .append('g')
@@ -75,13 +163,20 @@
             .text(function(d) { return d.name; });
 
     node.on('click', function(d){
-        var name = d.name;
         link.attr('class', function(o){
-            if(o[0] === d || o[2] === d){
-                return 'link visible';
+            if(o[0] === d) {
+                return 'link outgoing';
+            }else if(o[2] === d){
+                return 'link incoming';
+            }else {
+                return 'link hidden';
             }
-            return 'link hidden';
         });
+        model_name.html(d.name);
+        $('#fields_count').html(d.fields.length);
+        $('#rel_count').html(d.relations.length);
+        model_fields.html(fieldsToHTML(d));
+        model_relations.html(relationsToHTML(d));
     });
 
     force.on("tick", function() {
