@@ -13,6 +13,7 @@
         .link {
             fill: none;
             stroke: #bbb;
+            stroke-width: 1.5px;
         }
         .outgoing{
             stroke: red;
@@ -23,6 +24,15 @@
         .faint{
             stroke: rgba(0,0,0,0.05);
         }
+
+        .d3-tooltip{
+            background-color: white;
+            color: black;
+            padding: 0.6em 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
         .typeahead,
         .tt-query,
         .tt-hint {
@@ -203,14 +213,22 @@
             .links(links)
             .start();
 
+    var tooltip = d3.select("body")
+        .append("div")
+        .attr('class', 'd3-tooltip')
+        .style("position", "absolute")
+        .style("z-index", "10")
+        .style("visibility", "hidden")
+        .text("");
+
     var link = svg.selectAll(".link")
             .data(bilinks)
             .enter().append("path")
-            .attr("class", "link");
-
-    link.append("title").text(function(d){
-        return d[0].name + ' -> ' + d[2].name;
-    });
+            .attr("class", "link")
+            .on("mouseover", function(d){return tooltip.text('relation: ' + d[0].name + ' -> ' + d[2].name).style("visibility", "visible");})
+            .on("mousemove", function(){return tooltip.style("top",
+                (d3.event.pageY-10)+"px").style("left",(d3.event.pageX+10)+"px");})
+            .on("mouseout", function(){return tooltip.style("visibility", "hidden");});
 
     var node = svg.selectAll(".node")
             .data(nodes)
@@ -220,10 +238,12 @@
             .attr("class", "node")
             .attr("r", 5)
             .call(force.drag)
-            .on('drag.force', function(){});
+            .on('drag.force', function(){})
+            .on("mouseover", function(d){return tooltip.text('model: ' + d.name).style("visibility", "visible");})
+            .on("mousemove", function(){return tooltip.style("top",
+                (d3.event.pageY-10)+"px").style("left",(d3.event.pageX+10)+"px");})
+            .on("mouseout", function(){return tooltip.style("visibility", "hidden");});
 
-    node.append("title")
-            .text(function(d) { return d.name; });
 
     node.on('click', function(d){
         link.attr('class', function(o){
