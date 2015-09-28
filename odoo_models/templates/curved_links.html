@@ -14,14 +14,14 @@
             fill: none;
             stroke: #bbb;
         }
-        .hidden{
-            stroke: none;
-        }
         .outgoing{
             stroke: red;
         }
         .incoming{
             stroke: blue;
+        }
+        .faint{
+            stroke: rgba(0,0,0,0.05);
         }
         .typeahead,
         .tt-query,
@@ -232,7 +232,7 @@
             }else if(o[2] === d){
                 return 'link incoming';
             }else {
-                return 'link hidden';
+                return 'link faint';
             }
         });
         model_name.html(d.name);
