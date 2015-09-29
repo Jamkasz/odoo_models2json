@@ -25,6 +25,7 @@ class HTMLFormatter(object):
         :return: A string of HTML
         """
         collection_json = self.collection.convert_collection_to_json()
-        env = Environment(loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')))
+        env = Environment(loader=FileSystemLoader(os.path.join(os.path.dirname(__file__),
+                                                               'templates')))
         template = env.get_template('curved_links.html')
         return template.render(collection_json=collection_json)
