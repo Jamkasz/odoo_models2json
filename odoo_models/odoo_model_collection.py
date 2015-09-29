@@ -140,21 +140,37 @@ class OdooModelCollection(object):
         self.classes = []
         self.relation_models = []
         self.model_filter = model_filter
+
         print 'Obtaining model list...'
         models = self.client.models()
         models = {models[key]._name: models[key] for key in models.keys()}
 
+        # Filter out not wanted models
         if self.model_filter:
             models = {k: models[k] for k in models.keys() if
                       self.model_filter in k}
 
+        # Get inheritances
+        model_inherits = {}
+        irmodel = self.client.model('ir.model')
+        for model_name in models.keys():
+            model_inherits[model_name] = []
+            model_id = irmodel.search([['model', '=', model_name]])[0]
+            model_browse = irmodel.browse(model_id)
+            for model in model_browse.inherited_model_ids:
+                model_inherits[model_name].append(model.model)
+
+        # Build model structure
         for model in models.keys():
             oclass = OdooClass(model)
             fields = models[model].fields()
             for key in fields.keys():
                 field_type = fields[key]['type']
-                if field_type == 'many2one' or field_type == 'many2many' or \
-                        field_type == 'one2many':
+                if field_type == 'many2one':
+                    field_type = 'inherit' if fields[key]['relation'] \
+                        in model_inherits[model] else field_type
+                if field_type in ['many2one', 'one2many',
+                                  'many2many', 'inherit']:
                     relation_model = fields[key]['relation']
                     oclass.add_relation(key, field_type, relation_model)
                     if relation_model not in self.relation_models and \

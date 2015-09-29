@@ -4,7 +4,6 @@ import unittest
 from mock import MagicMock
 from mock import patch
 from odoo_models.odoo_model_collection import OdooModelCollection, OdooClass
-import erppeek
 
 
 class TestOdooClass(unittest.TestCase):
@@ -17,6 +16,7 @@ class TestOdooClass(unittest.TestCase):
         """
         # Mock Up
         mock_client = MagicMock()
+        mock_model = MagicMock()
         model_1 = MagicMock()
         model_1._name = 'test.model.1'
         model_1.fields = MagicMock(return_value={
@@ -32,7 +32,29 @@ class TestOdooClass(unittest.TestCase):
             'm2_f3': {'type': 'one2many', 'relation': 'test.model.1'},
         })
         mock_client.models = MagicMock(return_value={'Model 1': model_1, 'Model 2': model_2})
+        mock_client.model = MagicMock(return_value=mock_model)
         mock_erppeek = MagicMock(return_value=mock_client)
+
+        def search(domain):
+            if domain[0][2] == 'test.model.1':
+                return [1]
+            elif domain[0][2] == 'test.model.2':
+                return [2]
+            else:
+                return [0]
+
+        def browse(model_id):
+            model_browse = MagicMock()
+            if model_id == 1:
+                model = MagicMock()
+                model.model = 'test.model.2'
+                model_browse.inherited_model_ids = [model]
+            else:
+                model_browse.inherited_model_ids = []
+            return model_browse
+
+        mock_model.search = search
+        mock_model.browse = browse
 
         with patch('erppeek.Client', mock_erppeek):
             test_omc = OdooModelCollection()
@@ -118,6 +140,7 @@ class TestOdooClass(unittest.TestCase):
         """
         # Mock Up
         mock_client = MagicMock()
+        mock_model = MagicMock()
         model_1 = MagicMock()
         model_1._name = 'test.model.1'
         model_1.fields = MagicMock(return_value={
@@ -133,7 +156,29 @@ class TestOdooClass(unittest.TestCase):
             'm2_f3': {'type': 'one2many', 'relation': 'test.model.1'},
         })
         mock_client.models = MagicMock(return_value={'Model 1': model_1, 'Model 2': model_2})
+        mock_client.model = MagicMock(return_value=mock_model)
         mock_erppeek = MagicMock(return_value=mock_client)
+
+        def search(domain):
+            if domain[0][2] == 'test.model.1':
+                return [1]
+            elif domain[0][2] == 'test.model.2':
+                return [2]
+            else:
+                return [0]
+
+        def browse(model_id):
+            model_browse = MagicMock()
+            if model_id == 1:
+                model = MagicMock()
+                model.model = 'test.model.2'
+                model_browse.inherited_model_ids = [model]
+            else:
+                model_browse.inherited_model_ids = []
+            return model_browse
+
+        mock_model.search = search
+        mock_model.browse = browse
 
         with patch('erppeek.Client', mock_erppeek):
             test_omc = OdooModelCollection()
@@ -149,7 +194,7 @@ class TestOdooClass(unittest.TestCase):
                     "fields": [{"type": "char", "name": "m1_f2"}, {"type": "boolean", "name": "m1_f1"}],
                     "name": "test.model.1",
                     "relations": [
-                        {"model": "test.model.2", "type": "many2one", "name": "m1_f3"}
+                        {"model": "test.model.2", "type": "inherit", "name": "m1_f3"}
                     ]
                 }, {
                     "fields": [],
