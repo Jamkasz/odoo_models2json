@@ -166,11 +166,7 @@ class OdooModelCollection(object):
             fields = models[model].fields()
             for key in fields.keys():
                 field_type = fields[key]['type']
-                if field_type == 'many2one':
-                    field_type = 'inherit' if fields[key]['relation'] \
-                        in model_inherits[model] else field_type
-                if field_type in ['many2one', 'one2many',
-                                  'many2many', 'inherit']:
+                if field_type in ['many2one', 'one2many', 'many2many']:
                     relation_model = fields[key]['relation']
                     oclass.add_relation(key, field_type, relation_model)
                     if relation_model not in self.relation_models and \
@@ -178,6 +174,11 @@ class OdooModelCollection(object):
                         self.relation_models.append(relation_model)
                 else:
                     oclass.add_field(key, field_type)
+            for inheritance in model_inherits[model]:
+                oclass.add_relation('inheritance', 'inherit', inheritance)
+                if inheritance not in self.relation_models and \
+                        inheritance not in models.keys():
+                    self.relation_models.append(inheritance)
             self.classes.append(oclass)
 
         for model in self.relation_models:
