@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8">
+    <title>Odoo Model Collection Viewer - Curved Links</title>
+    <style>
+        body{
+            padding-top: 50px;
+        }
+        .node {
+            stroke: rgba(0,0,0,0);
+            stroke-width: 1.5px;
+        }
+        .link {
+            fill: none;
+            stroke: #bbb;
+        }
+        .outgoing{
+            stroke: red;
+        }
+        .incoming{
+            stroke: blue;
+        }
+        .faint{
+            stroke: rgba(0,0,0,0.05);
+        }
+        .typeahead,
+        .tt-query,
+        .tt-hint {
+          width: 396px;
+          height: 30px;
+          padding: 8px 12px;
+          font-size: 24px;
+          line-height: 30px;
+          border: 2px solid #ccc;
+          -webkit-border-radius: 8px;
+             -moz-border-radius: 8px;
+                  border-radius: 8px;
+          outline: none;
+        }
+
+        .typeahead {
+          background-color: #fff;
+        }
+
+        .typeahead:focus {
+          border: 2px solid #0097cf;
+        }
+
+        .tt-query {
+          -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+             -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+                  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+        }
+
+        .tt-hint {
+          color: #999
+        }
+
+        .tt-menu {
+          width: 422px;
+          margin: 12px 0;
+          padding: 8px 0;
+          background-color: #fff;
+          border: 1px solid #ccc;
+          border: 1px solid rgba(0, 0, 0, 0.2);
+          -webkit-border-radius: 8px;
+             -moz-border-radius: 8px;
+                  border-radius: 8px;
+          -webkit-box-shadow: 0 5px 10px rgba(0,0,0,.2);
+             -moz-box-shadow: 0 5px 10px rgba(0,0,0,.2);
+                  box-shadow: 0 5px 10px rgba(0,0,0,.2);
+        }
+
+        .tt-suggestion {
+          padding: 3px 20px;
+          font-size: 18px;
+          line-height: 24px;
+        }
+
+        .tt-suggestion:hover {
+          cursor: pointer;
+          color: #fff;
+          background-color: #0097cf;
+        }
+
+        .tt-suggestion.tt-cursor {
+          color: #fff;
+          background-color: #0097cf;
+
+        }
+
+        .tt-suggestion p {
+          margin: 0;
+        }
+    </style>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
+</head>
+<body>
+<nav class="navbar navbar-inverse navbar-fixed-top">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="#">Odoo Model Collection Viewer</a>
+        <form class="navbar-form navbar-right col-sm-offset-1">
+          <input type="text" class="form-control typeahead" placeholder="Search...">
+        </form>
+    </div>
+  </div>
+</nav>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-9 col-md-10 main">
+            <h1 class="page-header">Odoo Model</h1>
+            <div id="viz"></div>
+            <div class="well info">
+                <h2>Instructions</h2>
+                <p>Click on a point in the network graph to see the model details and it's relation with other models. <strong>Blue</strong> indicates a link from another model to the active model, <strong>Red</strong> indicates a link from the active model to another model</p>
+                <p>You can scroll in and out to zoom into the dataset.</p>
+            </div>
+        </div>
+        <div class="col-sm-3 col-md-2 sidebar">
+            <h2>Model Details</h2>
+            <h3>Name</h3>
+            <p id="model_name"></p>
+            <h3>Fields <span id="fields_count" class="label label-default badge"></span></h3>
+            <div id="model_fields"></div>
+            <h3>Relations <span id="rel_count" class="label label-default badge"></span></h3>
+            <div id="model_relations"></div>
+        </div>
+    </div>
+</div>
+<!-- jQuery JS -->
+<script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+<!-- Bootstrap search -->
+<script src="https://twitter.github.io/typeahead.js/releases/latest/typeahead.bundle.js"></script>
+<!-- d3 JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+<script>
+    // information display
+    var model_name = $('#model_name');
+    var model_fields = $('#model_fields');
+    var model_relations = $('#model_relations');
+    $('.sidebar h3').on('click', function(e){
+       $(this).next('div').toggle();
+    });
+
+    function fieldsToHTML(obj){
+        var htmlstr = ''
+        for(var i=0; i < obj.fields.length; i++){
+            var field = obj.fields[i];
+            htmlstr += '<p><strong>Name:</strong> ' + field.name + '<br>' +
+                    '<strong>Type:</strong> ' + field.type + '</p>';
+        }
+        return htmlstr;
+    }
+
+    function relationsToHTML(obj){
+        var htmlstr = ''
+        for(var i=0; i < obj.relations.length; i++){
+            var rel = obj.relations[i];
+            htmlstr +=  '<p><strong>Name:</strong> ' + rel.name + '<br>' +
+                    '<strong>Type:</strong> ' + rel.type + '<br>' +
+                    '<strong>Model:</strong> ' + rel.model + '</p>';
+        }
+        return htmlstr;
+    }
+
+    // svg
+    var graph = [{"fields": [{"type": "char", "name": "display_name"}, {"type": "datetime", "name": "name"}, {"type": "datetime", "name": "__last_update"}, {"type": "float", "name": "rate"}, {"type": "datetime", "name": "write_date"}, {"type": "datetime", "name": "create_date"}, {"type": "integer", "name": "id"}], "name": "res.currency.rate", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "res.currency", "type": "many2one", "name": "currency_id"}]}, {"fields": [{"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "datetime", "name": "__last_update"}, {"type": "char", "name": "object"}, {"type": "integer", "name": "priority"}, {"type": "datetime", "name": "write_date"}, {"type": "datetime", "name": "create_date"}, {"type": "integer", "name": "id"}], "name": "res.request.link", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}]}, {"fields": [{"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "datetime", "name": "__last_update"}, {"type": "datetime", "name": "write_date"}, {"type": "datetime", "name": "create_date"}, {"type": "integer", "name": "id"}], "name": "resource.calendar", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "resource.calendar.leaves", "type": "one2many", "name": "leave_ids"}, {"model": "res.company", "type": "many2one", "name": "company_id"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "res.users", "type": "many2one", "name": "manager"}, {"model": "resource.calendar.attendance", "type": "one2many", "name": "attendance_ids"}]}, {"fields": [{"type": "char", "name": "code"}, {"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "datetime", "name": "__last_update"}, {"type": "binary", "name": "image"}, {"type": "text", "name": "address_format"}, {"type": "datetime", "name": "write_date"}, {"type": "datetime", "name": "create_date"}, {"type": "integer", "name": "id"}], "name": "res.country", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "res.currency", "type": "many2one", "name": "currency_id"}, {"model": "res.country.group", "type": "many2many", "name": "country_group_ids"}]}, {"fields": [{"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "datetime", "name": "__last_update"}, {"type": "integer", "name": "id"}, {"type": "integer", "name": "parent_left"}, {"type": "char", "name": "complete_name"}, {"type": "datetime", "name": "write_date"}, {"type": "boolean", "name": "active"}, {"type": "datetime", "name": "create_date"}, {"type": "integer", "name": "parent_right"}], "name": "res.partner.category", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.groups", "type": "many2many", "name": "group_ids"}, {"model": "res.partner.category", "type": "one2many", "name": "child_ids"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "res.partner.category", "type": "many2one", "name": "parent_id"}, {"model": "res.partner", "type": "many2many", "name": "partner_ids"}]}, {"fields": [{"type": "char", "name": "city"}, {"type": "char", "name": "fax"}, {"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "char", "name": "zip"}, {"type": "char", "name": "street2"}, {"type": "datetime", "name": "__last_update"}, {"type": "char", "name": "bic"}, {"type": "char", "name": "phone"}, {"type": "char", "name": "street"}, {"type": "integer", "name": "id"}, {"type": "datetime", "name": "write_date"}, {"type": "boolean", "name": "active"}, {"type": "datetime", "name": "create_date"}, {"type": "char", "name": "email"}], "name": "res.bank", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.country", "type": "many2one", "name": "country"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "res.country.state", "type": "many2one", "name": "state"}]}, {"fields": [{"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "datetime", "name": "__last_update"}, {"type": "datetime", "name": "date_from"}, {"type": "datetime", "name": "create_date"}, {"type": "datetime", "name": "write_date"}, {"type": "datetime", "name": "date_to"}, {"type": "integer", "name": "id"}], "name": "resource.calendar.leaves", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "resource.resource", "type": "many2one", "name": "resource_id"}, {"model": "res.company", "type": "many2one", "name": "company_id"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "resource.calendar", "type": "many2one", "name": "calendar_id"}]}, {"fields": [{"type": "datetime", "name": "create_date"}, {"type": "datetime", "name": "__last_update"}, {"type": "boolean", "name": "clear_locations"}, {"type": "datetime", "name": "write_date"}, {"type": "integer", "name": "id"}, {"type": "char", "name": "display_name"}], "name": "nh.clinical.responsibility.allocation", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "res.users", "type": "many2one", "name": "user_id"}, {"model": "nh.clinical.location", "type": "many2many", "name": "location_ids"}]}, {"fields": [{"type": "datetime", "name": "date_terminated"}, {"type": "char", "name": "display_name"}, {"type": "datetime", "name": "__last_update"}, {"type": "char", "name": "state"}, {"type": "datetime", "name": "write_date"}, {"type": "integer", "name": "id"}, {"type": "datetime", "name": "create_date"}, {"type": "datetime", "name": "date_started"}, {"type": "char", "name": "name"}], "name": "nh.clinical.user.responsibility.allocation", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "nh.activity", "type": "many2one", "name": "activity_id"}, {"model": "res.users", "type": "many2one", "name": "responsible_user_id"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "res.users", "type": "many2one", "name": "terminate_uid"}, {"model": "nh.clinical.location", "type": "many2many", "name": "location_ids"}]}, {"fields": [{"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "datetime", "name": "__last_update"}, {"type": "datetime", "name": "write_date"}, {"type": "datetime", "name": "create_date"}, {"type": "integer", "name": "id"}], "name": "res.country.group", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.country", "type": "many2many", "name": "country_ids"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}]}, {"fields": [{"type": "char", "name": "date_format"}, {"type": "selection", "name": "direction"}, {"type": "char", "name": "code"}, {"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "char", "name": "thousands_sep"}, {"type": "datetime", "name": "__last_update"}, {"type": "boolean", "name": "translatable"}, {"type": "char", "name": "time_format"}, {"type": "datetime", "name": "create_date"}, {"type": "datetime", "name": "write_date"}, {"type": "char", "name": "decimal_point"}, {"type": "boolean", "name": "active"}, {"type": "char", "name": "iso_code"}, {"type": "integer", "name": "id"}, {"type": "char", "name": "grouping"}], "name": "res.lang", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}]}, {"fields": [{"type": "datetime", "name": "create_date"}, {"type": "datetime", "name": "__last_update"}, {"type": "datetime", "name": "write_date"}, {"type": "char", "name": "display_name"}, {"type": "integer", "name": "id"}], "name": "res.config", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}]}, {"fields": [{"type": "char", "name": "code"}, {"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "datetime", "name": "__last_update"}, {"type": "text", "name": "format_layout"}, {"type": "datetime", "name": "write_date"}, {"type": "datetime", "name": "create_date"}, {"type": "integer", "name": "id"}], "name": "res.partner.bank.type", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "res.partner.bank.type.field", "type": "one2many", "name": "field_ids"}]}, {"fields": [{"type": "text", "name": "comment"}, {"type": "char", "name": "ean13"}, {"type": "char", "name": "code"}, {"type": "datetime", "name": "create_date"}, {"type": "selection", "name": "notify_email"}, {"type": "integer", "name": "color"}, {"type": "datetime", "name": "message_last_post"}, {"type": "binary", "name": "image"}, {"type": "char", "name": "tz_offset"}, {"type": "boolean", "name": "active"}, {"type": "char", "name": "contact_address"}, {"type": "boolean", "name": "signup_valid"}, {"type": "char", "name": "signup_token"}, {"type": "char", "name": "signup_type"}, {"type": "char", "name": "signup_url"}, {"type": "text", "name": "message_summary"}, {"type": "char", "name": "city"}, {"type": "char", "name": "display_name"}, {"type": "boolean", "name": "opt_out"}, {"type": "boolean", "name": "message_is_follower"}, {"type": "datetime", "name": "__last_update"}, {"type": "integer", "name": "id"}, {"type": "char", "name": "website"}, {"type": "boolean", "name": "supplier"}, {"type": "char", "name": "ref"}, {"type": "char", "name": "email"}, {"type": "boolean", "name": "is_company"}, {"type": "char", "name": "function"}, {"type": "selection", "name": "lang"}, {"type": "char", "name": "fax"}, {"type": "char", "name": "zip"}, {"type": "char", "name": "parent_name"}, {"type": "char", "name": "street2"}, {"type": "boolean", "name": "employee"}, {"type": "binary", "name": "image_medium"}, {"type": "datetime", "name": "write_date"}, {"type": "date", "name": "date"}, {"type": "selection", "name": "tz"}, {"type": "datetime", "name": "signup_expiration"}, {"type": "boolean", "name": "customer"}, {"type": "float", "name": "credit_limit"}, {"type": "char", "name": "name"}, {"type": "char", "name": "phone"}, {"type": "char", "name": "mobile"}, {"type": "selection", "name": "type"}, {"type": "boolean", "name": "use_parent_address"}, {"type": "boolean", "name": "doctor"}, {"type": "char", "name": "birthdate"}, {"type": "binary", "name": "image_small"}, {"type": "char", "name": "street"}, {"type": "char", "name": "vat"}, {"type": "boolean", "name": "has_image"}, {"type": "boolean", "name": "message_unread"}], "name": "res.partner", "relations": [{"model": "res.partner", "type": "many2many", "name": "message_follower_ids"}, {"model": "mail.message", "type": "one2many", "name": "message_ids"}, {"model": "res.country", "type": "many2one", "name": "country_id"}, {"model": "res.company", "type": "many2one", "name": "company_id"}, {"model": "res.partner", "type": "many2one", "name": "parent_id"}, {"model": "res.partner.bank", "type": "one2many", "name": "bank_ids"}, {"model": "res.partner.title", "type": "many2one", "name": "title"}, {"model": "res.partner", "type": "one2many", "name": "child_ids"}, {"model": "res.users", "type": "one2many", "name": "user_ids"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "res.partner.category", "type": "many2many", "name": "category_id"}, {"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "user_id"}, {"model": "res.country.state", "type": "many2one", "name": "state_id"}, {"model": "res.partner", "type": "many2one", "name": "commercial_partner_id"}]}, {"fields": [{"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "char", "name": "family"}, {"type": "datetime", "name": "__last_update"}, {"type": "datetime", "name": "create_date"}, {"type": "char", "name": "mode"}, {"type": "datetime", "name": "write_date"}, {"type": "char", "name": "path"}, {"type": "integer", "name": "id"}], "name": "res.font", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}]}, {"fields": [{"type": "selection", "name": "status"}, {"type": "datetime", "name": "__last_update"}, {"type": "datetime", "name": "last_presence"}, {"type": "datetime", "name": "create_date"}, {"type": "datetime", "name": "write_date"}, {"type": "datetime", "name": "last_poll"}, {"type": "integer", "name": "id"}, {"type": "char", "name": "display_name"}], "name": "im_chat.presence", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "user_id"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}]}, {"fields": [{"type": "char", "name": "code"}, {"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "datetime", "name": "__last_update"}, {"type": "datetime", "name": "write_date"}, {"type": "datetime", "name": "create_date"}, {"type": "integer", "name": "id"}], "name": "res.country.state", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.country", "type": "many2one", "name": "country_id"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}]}, {"fields": [{"type": "datetime", "name": "create_date"}, {"type": "datetime", "name": "__last_update"}, {"type": "datetime", "name": "write_date"}, {"type": "char", "name": "display_name"}, {"type": "integer", "name": "id"}], "name": "res.config.settings", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}]}, {"fields": [{"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "datetime", "name": "__last_update"}, {"type": "boolean", "name": "required"}, {"type": "boolean", "name": "readonly"}, {"type": "datetime", "name": "write_date"}, {"type": "datetime", "name": "create_date"}, {"type": "integer", "name": "id"}, {"type": "integer", "name": "size"}], "name": "res.partner.bank.type.field", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "res.partner.bank.type", "type": "many2one", "name": "bank_type_id"}]}, {"fields": [{"type": "selection", "name": "dayofweek"}, {"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "datetime", "name": "__last_update"}, {"type": "date", "name": "date_from"}, {"type": "datetime", "name": "create_date"}, {"type": "float", "name": "hour_from"}, {"type": "float", "name": "hour_to"}, {"type": "datetime", "name": "write_date"}, {"type": "integer", "name": "id"}], "name": "resource.calendar.attendance", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "resource.calendar", "type": "many2one", "name": "calendar_id"}]}, {"fields": [{"type": "datetime", "name": "create_date"}, {"type": "datetime", "name": "__last_update"}, {"type": "datetime", "name": "write_date"}, {"type": "char", "name": "display_name"}, {"type": "integer", "name": "id"}], "name": "res.config.installer", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}]}, {"fields": [{"type": "datetime", "name": "__last_update"}, {"type": "boolean", "name": "newly_created"}, {"type": "char", "name": "share_url"}, {"type": "datetime", "name": "write_date"}, {"type": "datetime", "name": "create_date"}, {"type": "char", "name": "login"}, {"type": "char", "name": "password"}, {"type": "integer", "name": "id"}, {"type": "char", "name": "display_name"}], "name": "share.wizard.result.line", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "user_id"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "share.wizard", "type": "many2one", "name": "share_wizard_id"}]}, {"fields": [{"type": "float", "name": "time_efficiency"}, {"type": "char", "name": "code"}, {"type": "char", "name": "name"}, {"type": "datetime", "name": "__last_update"}, {"type": "datetime", "name": "create_date"}, {"type": "datetime", "name": "write_date"}, {"type": "boolean", "name": "active"}, {"type": "integer", "name": "id"}, {"type": "selection", "name": "resource_type"}, {"type": "char", "name": "display_name"}], "name": "resource.resource", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "user_id"}, {"model": "res.company", "type": "many2one", "name": "company_id"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "resource.calendar", "type": "many2one", "name": "calendar_id"}]}, {"fields": [{"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "float", "name": "rate_silent"}, {"type": "float", "name": "rounding"}, {"type": "char", "name": "symbol"}, {"type": "datetime", "name": "__last_update"}, {"type": "date", "name": "date"}, {"type": "float", "name": "rate"}, {"type": "boolean", "name": "base"}, {"type": "datetime", "name": "write_date"}, {"type": "boolean", "name": "active"}, {"type": "selection", "name": "position"}, {"type": "datetime", "name": "create_date"}, {"type": "integer", "name": "id"}, {"type": "integer", "name": "accuracy"}], "name": "res.currency", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.currency.rate", "type": "one2many", "name": "rate_ids"}, {"model": "res.company", "type": "many2one", "name": "company_id"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}]}, {"fields": [{"type": "selection", "name": "domain"}, {"type": "char", "name": "display_name"}, {"type": "char", "name": "name"}, {"type": "datetime", "name": "__last_update"}, {"type": "char", "name": "shortcut"}, {"type": "datetime", "name": "write_date"}, {"type": "datetime", "name": "create_date"}, {"type": "integer", "name": "id"}], "name": "res.partner.title", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}]}, {"fields": [{"type": "text", "name": "rml_footer"}, {"type": "datetime", "name": "create_date"}, {"type": "text", "name": "rml_header"}, {"type": "selection", "name": "rml_paper_format"}, {"type": "binary", "name": "logo_web"}, {"type": "char", "name": "street"}, {"type": "binary", "name": "logo"}, {"type": "integer", "name": "id"}, {"type": "char", "name": "account_no"}, {"type": "char", "name": "city"}, {"type": "char", "name": "display_name"}, {"type": "char", "name": "zip"}, {"type": "datetime", "name": "__last_update"}, {"type": "text", "name": "rml_footer_readonly"}, {"type": "char", "name": "email"}, {"type": "char", "name": "vat"}, {"type": "char", "name": "website"}, {"type": "char", "name": "fax"}, {"type": "char", "name": "street2"}, {"type": "boolean", "name": "custom_footer"}, {"type": "char", "name": "phone"}, {"type": "text", "name": "rml_header2"}, {"type": "text", "name": "rml_header3"}, {"type": "datetime", "name": "write_date"}, {"type": "char", "name": "rml_header1"}, {"type": "char", "name": "name"}, {"type": "char", "name": "company_registry"}], "name": "res.company", "relations": [{"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "res.currency", "type": "many2one", "name": "currency_id"}, {"model": "res.font", "type": "many2one", "name": "font"}, {"model": "res.partner", "type": "many2one", "name": "partner_id"}, {"model": "res.country", "type": "many2one", "name": "country_id"}, {"model": "res.company", "type": "many2one", "name": "parent_id"}, {"model": "report.paperformat", "type": "many2one", "name": "paperformat_id"}, {"model": "res.partner.bank", "type": "one2many", "name": "bank_ids"}, {"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.company", "type": "one2many", "name": "child_ids"}, {"model": "res.users", "type": "many2many", "name": "user_ids"}, {"model": "nh.clinical.pos", "type": "one2many", "name": "pos_ids"}, {"model": "res.currency", "type": "one2many", "name": "currency_ids"}, {"model": "res.country.state", "type": "many2one", "name": "state_id"}]}, {"fields": [{"type": "char", "name": "ean13"}, {"type": "char", "name": "code"}, {"type": "text", "name": "alias_defaults"}, {"type": "boolean", "name": "in_group_2"}, {"type": "char", "name": "contact_address"}, {"type": "boolean", "name": "signup_valid"}, {"type": "char", "name": "signup_url"}, {"type": "text", "name": "message_summary"}, {"type": "char", "name": "parent_name"}, {"type": "char", "name": "display_name"}, {"type": "boolean", "name": "opt_out"}, {"type": "boolean", "name": "employee"}, {"type": "char", "name": "alias_domain"}, {"type": "char", "name": "fax"}, {"type": "selection", "name": "sel_groups_14"}, {"type": "char", "name": "password"}, {"type": "binary", "name": "image_medium"}, {"type": "char", "name": "name"}, {"type": "char", "name": "signup_token"}, {"type": "datetime", "name": "create_date"}, {"type": "selection", "name": "notify_email"}, {"type": "date", "name": "login_date"}, {"type": "boolean", "name": "display_groups_suggestions"}, {"type": "char", "name": "street"}, {"type": "boolean", "name": "in_group_8"}, {"type": "boolean", "name": "in_group_6"}, {"type": "char", "name": "tz_offset"}, {"type": "boolean", "name": "in_group_1"}, {"type": "selection", "name": "state"}, {"type": "boolean", "name": "supplier"}, {"type": "char", "name": "ref"}, {"type": "char", "name": "email"}, {"type": "char", "name": "street2"}, {"type": "boolean", "name": "active"}, {"type": "selection", "name": "tz"}, {"type": "datetime", "name": "signup_expiration"}, {"type": "char", "name": "zip"}, {"type": "html", "name": "signature"}, {"type": "char", "name": "login"}, {"type": "boolean", "name": "message_unread"}, {"type": "text", "name": "comment"}, {"type": "integer", "name": "color"}, {"type": "binary", "name": "image"}, {"type": "selection", "name": "sel_groups_7"}, {"type": "boolean", "name": "in_group_15"}, {"type": "boolean", "name": "in_group_16"}, {"type": "boolean", "name": "in_group_17"}, {"type": "boolean", "name": "in_group_11"}, {"type": "boolean", "name": "in_group_18"}, {"type": "boolean", "name": "in_group_19"}, {"type": "char", "name": "password_crypt"}, {"type": "char", "name": "city"}, {"type": "integer", "name": "alias_parent_thread_id"}, {"type": "boolean", "name": "message_is_follower"}, {"type": "datetime", "name": "__last_update"}, {"type": "integer", "name": "alias_force_thread_id"}, {"type": "datetime", "name": "message_last_post"}, {"type": "char", "name": "im_status"}, {"type": "selection", "name": "type"}, {"type": "char", "name": "vat"}, {"type": "char", "name": "function"}, {"type": "boolean", "name": "in_group_28"}, {"type": "boolean", "name": "in_group_21"}, {"type": "boolean", "name": "in_group_20"}, {"type": "boolean", "name": "in_group_23"}, {"type": "boolean", "name": "display_employees_suggestions"}, {"type": "boolean", "name": "in_group_24"}, {"type": "boolean", "name": "in_group_27"}, {"type": "boolean", "name": "in_group_26"}, {"type": "boolean", "name": "in_group_29"}, {"type": "char", "name": "phone"}, {"type": "boolean", "name": "customer"}, {"type": "selection", "name": "sel_groups_9_10"}, {"type": "binary", "name": "image_small"}, {"type": "char", "name": "birthdate"}, {"type": "boolean", "name": "has_image"}, {"type": "selection", "name": "sel_groups_5_12_13"}, {"type": "boolean", "name": "share"}, {"type": "boolean", "name": "in_group_30"}, {"type": "boolean", "name": "use_parent_address"}, {"type": "char", "name": "signup_type"}, {"type": "integer", "name": "id"}, {"type": "boolean", "name": "doctor"}, {"type": "char", "name": "alias_name"}, {"type": "char", "name": "new_password"}, {"type": "char", "name": "website"}, {"type": "boolean", "name": "is_company"}, {"type": "boolean", "name": "in_group_22"}, {"type": "char", "name": "card_pin"}, {"type": "selection", "name": "alias_contact"}, {"type": "datetime", "name": "write_date"}, {"type": "date", "name": "date"}, {"type": "selection", "name": "lang"}, {"type": "float", "name": "credit_limit"}, {"type": "char", "name": "mobile"}, {"type": "selection", "name": "sel_groups_3_4"}], "name": "res.users", "relations": [{"model": "ir.model", "type": "many2one", "name": "alias_parent_model_id"}, {"model": "mail.alias", "type": "many2one", "name": "alias_id"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "res.partner.title", "type": "many2one", "name": "title"}, {"model": "res.company", "type": "many2one", "name": "company_id"}, {"model": "res.partner", "type": "many2one", "name": "parent_id"}, {"model": "res.partner", "type": "one2many", "name": "child_ids"}, {"model": "res.company", "type": "many2many", "name": "company_ids"}, {"model": "res.users", "type": "one2many", "name": "user_ids"}, {"model": "res.partner", "type": "many2one", "name": "commercial_partner_id"}, {"model": "nh.clinical.pos", "type": "many2one", "name": "pos_id"}, {"model": "res.partner", "type": "many2many", "name": "message_follower_ids"}, {"model": "hr.employee", "type": "one2many", "name": "employee_ids"}, {"model": "res.partner", "type": "many2one", "name": "partner_id"}, {"model": "res.country", "type": "many2one", "name": "country_id"}, {"model": "nh.clinical.patient", "type": "many2many", "name": "following_ids"}, {"model": "ir.actions.actions", "type": "many2one", "name": "action_id"}, {"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "ir.model", "type": "many2one", "name": "alias_model_id"}, {"model": "nh.clinical.location", "type": "many2many", "name": "location_ids"}, {"model": "res.users", "type": "many2one", "name": "alias_user_id"}, {"model": "res.groups", "type": "many2many", "name": "groups_id"}, {"model": "res.country.state", "type": "many2one", "name": "state_id"}, {"model": "mail.message", "type": "one2many", "name": "message_ids"}, {"model": "res.partner.bank", "type": "one2many", "name": "bank_ids"}, {"model": "nh.clinical.doctor", "type": "many2one", "name": "doctor_id"}, {"model": "res.users", "type": "many2one", "name": "user_id"}, {"model": "res.partner.category", "type": "many2many", "name": "category_id"}]}, {"fields": [{"type": "datetime", "name": "create_date"}, {"type": "integer", "name": "sequence"}, {"type": "char", "name": "street"}, {"type": "integer", "name": "id"}, {"type": "char", "name": "display_name"}, {"type": "char", "name": "zip"}, {"type": "datetime", "name": "__last_update"}, {"type": "selection", "name": "state"}, {"type": "char", "name": "acc_number"}, {"type": "char", "name": "bank_name"}, {"type": "char", "name": "owner_name"}, {"type": "char", "name": "city"}, {"type": "datetime", "name": "write_date"}, {"type": "char", "name": "name"}, {"type": "char", "name": "bank_bic"}, {"type": "boolean", "name": "footer"}], "name": "res.partner.bank", "relations": [{"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "res.partner", "type": "many2one", "name": "partner_id"}, {"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "res.country", "type": "many2one", "name": "country_id"}, {"model": "res.company", "type": "many2one", "name": "company_id"}, {"model": "res.bank", "type": "many2one", "name": "bank"}, {"model": "res.country.state", "type": "many2one", "name": "state_id"}]}, {"fields": [{"type": "text", "name": "comment"}, {"type": "char", "name": "display_name"}, {"type": "datetime", "name": "__last_update"}, {"type": "boolean", "name": "share"}, {"type": "boolean", "name": "is_portal"}, {"type": "char", "name": "full_name"}, {"type": "datetime", "name": "write_date"}, {"type": "datetime", "name": "create_date"}, {"type": "integer", "name": "id"}, {"type": "char", "name": "name"}], "name": "res.groups", "relations": [{"model": "res.users", "type": "many2one", "name": "create_uid"}, {"model": "ir.ui.menu", "type": "many2many", "name": "menu_access"}, {"model": "res.users", "type": "many2one", "name": "write_uid"}, {"model": "ir.rule", "type": "many2many", "name": "rule_groups"}, {"model": "res.groups", "type": "many2many", "name": "implied_ids"}, {"model": "ir.ui.view", "type": "many2many", "name": "view_access"}, {"model": "res.users", "type": "many2many", "name": "users"}, {"model": "ir.module.category", "type": "many2one", "name": "category_id"}, {"model": "ir.model.access", "type": "one2many", "name": "model_access"}, {"model": "res.groups", "type": "many2many", "name": "trans_implied_ids"}]}, {"fields": [], "name": "nh.clinical.location", "relations": []}, {"fields": [], "name": "nh.activity", "relations": []}, {"fields": [], "name": "mail.message", "relations": []}, {"fields": [], "name": "share.wizard", "relations": []}, {"fields": [], "name": "report.paperformat", "relations": []}, {"fields": [], "name": "nh.clinical.pos", "relations": []}, {"fields": [], "name": "ir.model", "relations": []}, {"fields": [], "name": "mail.alias", "relations": []}, {"fields": [], "name": "hr.employee", "relations": []}, {"fields": [], "name": "nh.clinical.patient", "relations": []}, {"fields": [], "name": "ir.actions.actions", "relations": []}, {"fields": [], "name": "nh.clinical.doctor", "relations": []}, {"fields": [], "name": "ir.ui.menu", "relations": []}, {"fields": [], "name": "ir.rule", "relations": []}, {"fields": [], "name": "ir.ui.view", "relations": []}, {"fields": [], "name": "ir.module.category", "relations": []}, {"fields": [], "name": "ir.model.access", "relations": []}];
+    var width = 960, height = 500;
+    var force = d3.layout.force()
+            .linkDistance(120)
+            .linkStrength(1)
+            .size([width, height]);
+    var svg = d3.select("#viz").append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .append('g')
+            .call(d3.behavior.zoom().scaleExtent([1,8]).on("zoom", zoom))
+            .append('g')
+
+    var nodes = graph.slice(), links = [], bilinks = [];
+    var mapped_nodes = nodes.map(function(a){return a.name;})
+
+    graph.forEach(function(node) {
+        var i = {};
+        nodes.push(i);
+        node.relations.forEach(function(relation){
+            var s = node;
+            var t = nodes[mapped_nodes.indexOf(relation.model)];
+            if(s.name && t.name){
+                links.push({source: s, target: i}, {source: i, target: t});
+                bilinks.push([s, i, t]);
+            }
+        });
+    });
+
+    force.nodes(nodes)
+            .links(links)
+            .start();
+
+    var link = svg.selectAll(".link")
+            .data(bilinks)
+            .enter().append("path")
+            .attr("class", "link");
+
+    link.append("title").text(function(d){
+        return d[0].name + ' -> ' + d[2].name;
+    });
+
+    var node = svg.selectAll(".node")
+            .data(nodes)
+            .enter()
+            .append("circle")
+            .filter(function(d){ return typeof(d.name) !== 'undefined'; })
+            .attr("class", "node")
+            .attr("r", 5)
+            .call(force.drag)
+            .on('drag.force', function(){});
+
+    node.append("title")
+            .text(function(d) { return d.name; });
+
+    node.on('click', function(d){
+        link.attr('class', function(o){
+            if(o[0] === d) {
+                return 'link outgoing';
+            }else if(o[2] === d){
+                return 'link incoming';
+            }else {
+                return 'link faint';
+            }
+        });
+        model_name.html(d.name);
+        $('#fields_count').html(d.fields.length);
+        $('#rel_count').html(d.relations.length);
+        model_fields.html(fieldsToHTML(d));
+        model_relations.html(relationsToHTML(d));
+    });
+
+    force.on("tick", function() {
+        link.attr("d", function(d) {
+            return "M" + d[0].x + "," + d[0].y
+                    + "S" + d[1].x + "," + d[1].y
+                    + " " + d[2].x + "," + d[2].y;
+        });
+        node.attr("transform", function(d) {
+            return "translate(" + d.x + "," + d.y + ")";
+        });
+    });
+
+
+
+    function zoom() {
+        svg.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+    }
+
+    $('.typeahead').typeahead({
+        minLength: 3,
+        highlight: true
+    },{
+        name: 'models',
+        source: function(query, syncResults, asyncResults){
+            var results = []
+            mapped_nodes.map(function(a){ if(a.indexOf(query) > -1){ results.push(a); } })
+            return syncResults(results);
+        }
+    });
+
+    $('.typeahead').bind('typeahead:select', function(ev, suggestion) {
+      var nodes = node.filter(function(d){ if(d.name == suggestion){ return d; }});
+      var e = document.createEvent('CustomEvent');
+      e.initCustomEvent('click', true, true, false);
+      nodes.node().dispatchEvent(e);
+      console.log('Selection: ' + suggestion);
+    });
+
+</script>
+</body>
