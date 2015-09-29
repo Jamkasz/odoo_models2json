@@ -45,12 +45,12 @@ class TestOdooClass(unittest.TestCase):
 
         def browse(model_id):
             model_browse = MagicMock()
-            model = MagicMock()
             if model_id == 1:
+                model = MagicMock()
                 model.model = 'test.model.2'
+                model_browse.inherited_model_ids = [model]
             else:
-                model.model = 'test.model.4'
-            model_browse.inherited_model_ids = [model]
+                model_browse.inherited_model_ids = []
             return model_browse
 
         mock_model.search = search
@@ -59,14 +59,12 @@ class TestOdooClass(unittest.TestCase):
         with patch('erppeek.Client', mock_erppeek):
             test_omc = OdooModelCollection()
             self.assertIsInstance(test_omc.client, MagicMock)
-            self.assertEqual(len(test_omc.classes), 4)
+            self.assertEqual(len(test_omc.classes), 3)
             self.assertIsInstance(test_omc.classes[0], OdooClass)
             self.assertIsInstance(test_omc.classes[1], OdooClass)
             self.assertIsInstance(test_omc.classes[2], OdooClass)
-            self.assertIsInstance(test_omc.classes[3], OdooClass)
-            self.assertEqual(len(test_omc.relation_models), 2)
+            self.assertEqual(len(test_omc.relation_models), 1)
             self.assertEqual(test_omc.relation_models[0], 'test.model.3')
-            self.assertEqual(test_omc.relation_models[1], 'test.model.4')
             self.assertFalse(test_omc.model_filter)
 
     def test_02_init_throws_runtime_exception_when_connection_fails(self):
@@ -171,12 +169,12 @@ class TestOdooClass(unittest.TestCase):
 
         def browse(model_id):
             model_browse = MagicMock()
-            model = MagicMock()
             if model_id == 1:
+                model = MagicMock()
                 model.model = 'test.model.2'
+                model_browse.inherited_model_ids = [model]
             else:
-                model.model = 'test.model.4'
-            model_browse.inherited_model_ids = [model]
+                model_browse.inherited_model_ids = []
             return model_browse
 
         mock_model.search = search
@@ -190,23 +188,17 @@ class TestOdooClass(unittest.TestCase):
                     "name": "test.model.2",
                     "relations": [
                         {"model": "test.model.1", "type": "one2many", "name": "m2_f3"},
-                        {"model": "test.model.3", "type": "many2many", "name": "m2_f2"},
-                        {"model": "test.model.4", "type": "inherit", "name": "inheritance"}
+                        {"model": "test.model.3", "type": "many2many", "name": "m2_f2"}
                     ]
                 }, {
                     "fields": [{"type": "char", "name": "m1_f2"}, {"type": "boolean", "name": "m1_f1"}],
                     "name": "test.model.1",
                     "relations": [
-                        {"model": "test.model.2", "type": "many2one", "name": "m1_f3"},
-                        {"model": "test.model.2", "type": "inherit", "name": "inheritance"}
+                        {"model": "test.model.2", "type": "many2one", "name": "m1_f3"}
                     ]
                 }, {
                     "fields": [],
                     "name": "test.model.3",
-                    "relations": []
-                }, {
-                    "fields": [],
-                    "name": "test.model.4",
                     "relations": []
                 }]
             self.assertListEqual(eval(test_omc.convert_collection_to_json()), json)

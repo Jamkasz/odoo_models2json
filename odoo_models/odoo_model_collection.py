@@ -150,23 +150,13 @@ class OdooModelCollection(object):
             models = {k: models[k] for k in models.keys() if
                       self.model_filter in k}
 
-        # Get inheritances
-        model_inherits = {}
-        irmodel = self.client.model('ir.model')
-        for model_name in models.keys():
-            model_inherits[model_name] = []
-            model_id = irmodel.search([['model', '=', model_name]])[0]
-            model_browse = irmodel.browse(model_id)
-            for model in model_browse.inherited_model_ids:
-                model_inherits[model_name].append(model.model)
-
         # Build model structure
         for model in models.keys():
             oclass = OdooClass(model)
             fields = models[model].fields()
             for key in fields.keys():
                 field_type = fields[key]['type']
-                if field_type in ['many2one', 'one2many', 'many2many']:
+                if field_type in ['many2one', 'many2many', 'one2many']:
                     relation_model = fields[key]['relation']
                     oclass.add_relation(key, field_type, relation_model)
                     if relation_model not in self.relation_models and \
@@ -174,11 +164,6 @@ class OdooModelCollection(object):
                         self.relation_models.append(relation_model)
                 else:
                     oclass.add_field(key, field_type)
-            for inheritance in model_inherits[model]:
-                oclass.add_relation('inheritance', 'inherit', inheritance)
-                if inheritance not in self.relation_models and \
-                        inheritance not in models.keys():
-                    self.relation_models.append(inheritance)
             self.classes.append(oclass)
 
         for model in self.relation_models:
